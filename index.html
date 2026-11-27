@@ -94,6 +94,19 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .votebtns button{background:var(--panel2);color:var(--ink);min-height:56px;font-size:1.1rem;border:3px solid transparent}
 .votebtns button.sel{border-color:#a78bfa;background:#4c1d95}
 
+.banner.discuss{background:#1e3a8a;color:#eff6ff}
+.timer{font-size:clamp(3rem,12vw,5.5rem);font-weight:900;text-align:center;line-height:1;font-variant-numeric:tabular-nums;margin:6px 0}
+.timer.low{color:var(--danger)}
+.timer.paused{opacity:.5}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper b{min-width:3.5em;text-align:center;font-size:1.2rem}
+.stepper button{padding:8px 14px}
+.results{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.results li{padding:10px 12px;border-radius:10px;background:#3a1616;font-size:1.1rem}
+.results li.hit{background:#14532d}
+.tally{color:var(--muted);margin:8px 0 0}
+#flash.tie{background:rgba(120,53,15,.94)}
+
 /* Flash overlay */
 #flash{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:50;
   text-align:center;padding:20px;pointer-events:none}
@@ -158,6 +171,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   <div class="hostgrid">
     <div>
       <div id="host-banner"></div>
+      <div id="host-phase"></div>
       <div class="card big" id="host-boardwrap">
         <div class="waiting" id="host-idle">
           <div class="logo">🦎</div>
@@ -214,7 +228,9 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
   </div>
   <div id="pl-round" hidden>
     <div id="pl-banner"></div>
+    <div class="card" id="pl-timer" hidden></div>
     <div class="card" id="pl-vote" hidden></div>
+    <div class="card" id="pl-results" hidden></div>
     <div class="secret">
       <button class="holdbtn" id="pl-hold" type="button">
         <span class="val" id="pl-val">Hold to see your word</span>
@@ -278,18 +294,40 @@ function makeCode(){
   let s = ''; for(let i = 0; i < 4; i++) s += L[rnd(L.length)]; return s;
 }
 
-// Big flashing ✕ (wrong person) or ✓ (caught) on every screen.
+// Big flashing ✕ (wrong person), 🦎 (caught) or tie on every screen.
 let flashTimer = null;
-function showFlash(name, hit){
+function showFlash(name, kind){
   const f = $('#flash');
   f.className = '';
   void f.offsetWidth; // restart animation
-  f.className = 'on ' + (hit ? 'hit' : 'miss');
-  f.querySelector('.sym').textContent = hit ? '🦎' : '✕';
-  f.querySelector('.msg').textContent = hit ? `${name} IS the Chameleon!` : `${name} is NOT the Chameleon`;
+  f.className = 'on ' + kind;
+  f.querySelector('.sym').textContent = kind === 'hit' ? '🦎' : kind === 'tie' ? '⚖️' : '✕';
+  f.querySelector('.msg').textContent = kind === 'hit' ? `${name} IS the Chameleon!`
+    : kind === 'tie' ? `Tie: ${name} — discuss & vote again` : `${name} is NOT the Chameleon`;
   clearTimeout(flashTimer);
   flashTimer = setTimeout(() => { f.className = ''; }, 2800);
-  if(navigator.vibrate) try{ navigator.vibrate(hit ? [80, 60, 80, 60, 200] : [200]); }catch{}
+  if(navigator.vibrate) try{ navigator.vibrate(kind === 'hit' ? [80, 60, 80, 60, 200] : [200]); }catch{}
+}
+
+const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+// Countdown elements: <div class="timer" data-end="local ms" data-left="ms when paused">
+function tickTimers(){
+  document.querySelectorAll('.timer[data-end], .timer[data-left]').forEach(el => {
+    const left = el.dataset.end ? +el.dataset.end - Date.now() : +el.dataset.left;
+    el.textContent = fmtTime(left);
+    el.classList.toggle('low', left <= 10000);
+    el.classList.toggle('paused', !el.dataset.end);
+  });
+}
+setInterval(tickTimers, 250);
+
+// "Voted out" list + last vote count, shown on host and phones.
+function resultsHtml(out, lastTally){
+  if(!out.length && !lastTally) return '';
+  return `<h2>Voted out</h2><ul class="results">` +
+    out.map(o => o.hit ? `<li class="hit">🦎 <b>${esc(o.name)}</b> — the Chameleon!</li>`
+                       : `<li>✕ <b>${esc(o.name)}</b> — not the Chameleon</li>`).join('') + `</ul>` +
+    (lastTally ? `<p class="tally">Last vote: ${lastTally.map(t => `${esc(t.name)} ${t.n}`).join(' · ')}</p>` : '');
 }
 
 // Shared "what's happening" banner for host + phones.
@@ -300,7 +338,8 @@ function bannerHtml(v){
     return v.isYou ? `<div class="banner you">🎤 Your turn — give a hint!</div>`
                    : `<div class="banner">🎤 <b>${esc(v.turnName)}</b>'s turn</div>`;
   }
-  if(v.phase === 'vote') return `<div class="banner vote">🗳️ Voting time — who is the Chameleon?</div>`;
+  if(v.phase === 'discuss') return `<div class="banner discuss">💬 Discussion — who is the Chameleon?</div>`;
+  if(v.phase === 'vote') return `<div class="banner vote">🗳️ Voting time — vote on your phone!</div>`;
   if(v.phase === 'done'){
     const r = v.result;
     return r.caught
@@ -312,7 +351,7 @@ function bannerHtml(v){
 
 // Read-only turn list (phones). items: [{pid,name}]
 function turnsHtml(items, curPid, out, hintsOn, hints, youPid){
-  return `<div class="panelhd"><h2>${hintsOn ? 'Turns & hints' : 'Turn order'}</h2></div><ol class="turns">` +
+  return `<div class="panelhd"><h2>Turns & hints</h2></div><ol class="turns">` +
     items.map((p, i) => `<li class="${p.pid === curPid ? 'cur' : ''} ${out.includes(p.pid) ? 'out' : ''}">
       <span class="num">${i+1}</span>
       <span class="nm">${p.pid === curPid ? '▶ ' : ''}${esc(p.name)}${p.pid === youPid ? ' <span class="muted">(you)</span>' : ''}${out.includes(p.pid) ? ' ✕' : ''}</span>
@@ -331,7 +370,7 @@ const H = {
     const s = this.state;
     if(!s.used) s.used = [];
     if(!s.order) s.order = [];
-    if(s.hintsOn == null) s.hintsOn = false;
+    if(!s.discussSecs) s.discussSecs = 60;
     if(s.round && !s.round.order) s.round = null; // round from an older version
   },
 };
@@ -433,10 +472,11 @@ function payloadFor(pid){
     secret: pid === r.cham ? null : card.words[r.word],
     order: r.order.map(p => ({ pid: p, name: pname(p) })),
     turn: r.phase === 'clues' ? (r.order[r.turn] || null) : null,
-    hintsOn: H.state.hintsOn, hints: H.state.hintsOn ? r.hints : {},
+    hintsOn: true, hints: r.hints,
     phase: r.phase, out: r.out, myVote: r.votes[pid] || null,
     votedN: Object.keys(r.votes).length, total: r.members.length,
-    flash: r.flash,
+    flash: r.flash, timer: timerLeft(r),
+    outList: outList(r), lastTally: r.lastTally || null,
     result: r.phase === 'done' ? { cham: pname(r.cham), word: card.words[r.word], caught: r.caught } : null,
   };
 }
@@ -489,25 +529,76 @@ function hostShuffle(){
   for(let i = r.order.length - 1; i > 0; i--){ const j = rnd(i + 1); [r.order[i], r.order[j]] = [r.order[j], r.order[i]]; }
   r.turn = 0; syncOrder(); commit();
 }
-function hostSetTurn(i){ const r = H.state.round; if(!r) return; r.phase = r.phase === 'done' ? 'done' : 'clues'; r.turn = i; commit(); }
+function hostSetTurn(i){ const r = H.state.round; if(!r) return; r.turn = i; commit(); }
 function hostNextTurn(){ const r = H.state.round; if(!r) return; r.turn = (r.turn + 1) % r.order.length; commit(); }
-function hostStartVoting(){ const r = H.state.round; if(!r) return; r.phase = 'vote'; r.votes = {}; commit(); }
-function hostBackToClues(){ const r = H.state.round; if(!r) return; r.phase = 'clues'; r.votes = {}; commit(); }
+function hostStartVoting(){ const r = H.state.round; if(!r) return; r.phase = 'vote'; r.votes = {}; r.timer = null; commit(); }
+function hostBackToClues(){ const r = H.state.round; if(!r) return; r.phase = 'clues'; r.votes = {}; r.timer = null; commit(); }
 
-// Host marks who the group voted out. Wrong -> flash ✕ everywhere and vote again.
+// ---- Discussion timer (host clock; phones get "ms left") ----
+// r.timer = { end: hostMs } while running, or { left: ms } while paused.
+function timerLeft(r){
+  if(!r || !r.timer) return null;
+  return r.timer.end ? { left: Math.max(0, r.timer.end - Date.now()), running: true } : { left: r.timer.left, running: false };
+}
+function hostStartDiscussion(){
+  const r = H.state.round; if(!r) return;
+  r.phase = 'discuss'; r.votes = {};
+  r.timer = { end: Date.now() + H.state.discussSecs * 1000 };
+  commit();
+}
+function hostAddTime(sec){
+  const r = H.state.round; if(!r || !r.timer) return;
+  if(r.timer.end) r.timer.end = Math.max(Date.now(), r.timer.end) + sec * 1000; else r.timer.left += sec * 1000;
+  commit();
+}
+function hostPause(){
+  const r = H.state.round; if(!r || !r.timer) return;
+  r.timer = r.timer.end ? { left: Math.max(0, r.timer.end - Date.now()) } : { end: Date.now() + r.timer.left };
+  commit();
+}
+function hostSetDiscussSecs(d){ H.state.discussSecs = Math.min(600, Math.max(15, H.state.discussSecs + d)); H.save(); renderRoundPanel(); }
+// When discussion time runs out, go straight to voting.
+setInterval(() => {
+  const r = H.state && H.state.round;
+  if(r && r.phase === 'discuss' && r.timer && r.timer.end && Date.now() >= r.timer.end) hostStartVoting();
+}, 500);
+
+// ---- Voting ----
+function outList(r){ return r.out.map(p => ({ name: pname(p), hit: p === r.cham })); }
+
+// Host presses "Reveal votes": whoever got the most votes is checked.
+function hostRevealVotes(){
+  const r = H.state.round; if(!r || r.phase !== 'vote') return;
+  const tally = {};
+  for(const t of Object.values(r.votes)) tally[t] = (tally[t] || 0) + 1;
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  if(!ranked.length) return;
+  r.lastTally = ranked.map(([p, n]) => ({ name: pname(p), n }));
+  const tied = ranked.filter(e => e[1] === ranked[0][1]).map(e => e[0]);
+  if(tied.length > 1){
+    const names = tied.map(pname).join(' & ');
+    r.flash = { seq: (r.flash?.seq || 0) + 1, name: names, kind: 'tie' };
+    H.save(); hostStartDiscussion();
+    showFlash(names, 'tie');
+    return;
+  }
+  hostEliminate(tied[0]);
+}
+
+// Check one player. Wrong -> flash ✕ everywhere, back to discussion, then vote again.
 function hostEliminate(pid){
-  const r = H.state.round; if(!r || r.phase !== 'vote' || r.out.includes(pid)) return;
+  const r = H.state.round; if(!r || r.phase === 'done' || r.out.includes(pid)) return;
   r.out.push(pid);
   const hit = pid === r.cham;
-  r.flash = { seq: (r.flash?.seq || 0) + 1, name: pname(pid), hit };
+  r.flash = { seq: (r.flash?.seq || 0) + 1, name: pname(pid), kind: hit ? 'hit' : 'miss' };
   r.votes = {};
-  if(hit){ r.phase = 'done'; r.caught = true; }
-  commit();
-  showFlash(pname(pid), hit);
+  if(hit){ r.phase = 'done'; r.caught = true; r.timer = null; H.save(); commit(); }
+  else hostStartDiscussion();
+  showFlash(pname(pid), hit ? 'hit' : 'miss');
 }
 function hostReveal(){
   const r = H.state.round; if(!r) return;
-  r.phase = 'done'; r.caught = false; commit();
+  r.phase = 'done'; r.caught = false; r.timer = null; commit();
 }
 
 function renderHostAll(){
@@ -525,14 +616,49 @@ function renderHostAll(){
 
 function renderRoundPanel(){
   const r = H.state.round, el = $('#host-round');
-  if(!r){ el.innerHTML = ''; return; }
+  if(!r){ el.innerHTML = ''; $('#host-phase').innerHTML = ''; return; }
   // Keep focus in a hint box while the panel re-renders.
   const ae = document.activeElement;
   const keep = ae && ae.dataset && ae.dataset.hint ? { pid: ae.dataset.hint, s: ae.selectionStart } : null;
 
-  const on = H.state.hintsOn, clues = r.phase === 'clues';
-  let h = `<div class="card"><div class="panelhd"><h2>Turn order</h2>
-    <label class="tog"><input type="checkbox" id="hint-tog" ${on ? 'checked' : ''}> Show hints on screens</label></div>
+  const on = true, clues = r.phase === 'clues';
+  let h = '';
+
+  // Discussion: big countdown + controls
+  if(r.phase === 'discuss'){
+    const t = timerLeft(r);
+    h += `<div class="card"><div class="panelhd"><h2>💬 Discussion</h2></div>
+      <div class="timer" ${t.running ? `data-end="${Date.now() + t.left}"` : `data-left="${t.left}"`}>${fmtTime(t.left)}</div>
+      <div class="row" style="justify-content:center;margin-top:10px">
+        <button class="secondary" id="r-pause">${t.running ? '⏸ Pause' : '▶ Resume'}</button>
+        <button class="secondary" id="r-add">+30s</button>
+        <button id="r-vote">Skip to voting 🗳️</button>
+      </div></div>`;
+  }
+
+  // Voting: votes stay hidden until the host reveals them
+  if(r.phase === 'vote'){
+    const n = Object.keys(r.votes).length;
+    const notVoted = r.members.filter(p => !(p in r.votes)).map(pname);
+    const left = r.order.filter(p => !r.out.includes(p));
+    h += `<div class="card"><div class="panelhd"><h2>🗳️ Voting</h2><span class="pill">${n}/${r.members.length} voted</span></div>
+      <p class="muted" style="margin-top:0">${notVoted.length ? 'Still voting: ' + notVoted.map(esc).join(', ') : 'Everyone has voted!'}</p>
+      <div class="row">
+        <button id="r-revealvotes" ${n ? '' : 'disabled'}>Reveal votes</button>
+        <button class="secondary" id="r-discuss">💬 More discussion</button>
+      </div>
+      <details style="margin-top:12px"><summary class="muted">Pick who was voted out manually</summary>
+        <div class="row" style="margin-top:8px">${left.map(p => `<button class="secondary" data-out="${p}">${esc(pname(p))}</button>`).join('')}</div>
+      </details></div>`;
+  }
+
+  // Results so far
+  const res = resultsHtml(outList(r), r.lastTally);
+  if(res) h += `<div class="card">${res}</div>`;
+  const top = h; h = '';
+
+  h += `<div class="card"><div class="panelhd"><h2>Turns & hints</h2>
+    <div class="stepper"><span class="muted">Discussion</span><button class="secondary" id="r-tminus">−</button><b>${fmtTime(H.state.discussSecs * 1000)}</b><button class="secondary" id="r-tplus">+</button></div></div>
     <ol class="turns">` + r.order.map((pid, i) => `
       <li class="${clues && i === r.turn ? 'cur' : ''} ${r.out.includes(pid) ? 'out' : ''}">
         <span class="mv"><button class="x" data-up="${i}" title="Move up">▲</button><button class="x" data-down="${i}" title="Move down">▼</button></span>
@@ -541,33 +667,20 @@ function renderRoundPanel(){
       </li>`).join('') + `</ol>
     <div class="row" style="margin-top:12px">
       <button class="secondary" id="r-shuffle">🔀 Shuffle order</button>
-      ${clues ? `<button class="secondary" id="r-next">Next turn ▶</button><button id="r-vote">🗳️ Start voting</button>` : ''}
+      ${clues ? `<button class="secondary" id="r-next">Next turn ▶</button>
+                 <button id="r-discuss">💬 Start discussion</button>
+                 <button class="secondary" id="r-vote">Skip to voting</button>` : ''}
+      ${r.phase === 'discuss' || r.phase === 'vote' ? `<button class="secondary" id="r-clues">◀ Back to hints</button>` : ''}
+      ${r.phase !== 'done' ? `<button class="secondary" id="r-giveup">Reveal anyway</button>` : ''}
     </div></div>`;
-
-  if(r.phase === 'vote'){
-    const left = r.order.filter(p => !r.out.includes(p));
-    const tally = {}; Object.values(r.votes).forEach(t => tally[t] = (tally[t] || 0) + 1);
-    const max = Math.max(1, ...Object.values(tally));
-    const notVoted = r.members.filter(p => !(p in r.votes)).map(pname);
-    h += `<div class="card"><div class="panelhd"><h2>Voting</h2><span class="pill">${Object.keys(r.votes).length}/${r.members.length} voted</span></div>
-      <p class="muted" style="margin-top:0">Players vote on their phones. Tap <b>Voted out</b> on whoever the group picked.</p>
-      <div class="votes">` +
-      left.map(p => `<div class="vrow"><span class="vname">${esc(pname(p))}</span>
-          <span class="bar"><i style="width:${(tally[p] || 0) / max * 100}%"></i></span><span class="cnt">${tally[p] || 0}</span>
-          <button class="danger" data-out="${p}">Voted out</button></div>`).join('') +
-      r.out.map(p => `<div class="vrow gone"><span class="vname">${esc(pname(p))}</span><span class="muted">not the Chameleon</span></div>`).join('') +
-      `</div>${notVoted.length ? `<p class="muted">Still voting: ${notVoted.map(esc).join(', ')}</p>` : ''}
-      <div class="row" style="margin-top:12px">
-        <button class="secondary" id="r-clues">◀ Back to hints</button>
-        <button class="secondary" id="r-giveup">Reveal anyway</button>
-      </div></div>`;
-  }
   el.innerHTML = h;
+  $('#host-phase').innerHTML = top;
+  tickTimers();
 
   el.querySelectorAll('[data-up]').forEach(b => b.onclick = () => hostMove(+b.dataset.up, -1));
   el.querySelectorAll('[data-down]').forEach(b => b.onclick = () => hostMove(+b.dataset.down, 1));
   el.querySelectorAll('[data-turn]').forEach(b => b.onclick = () => hostSetTurn(+b.dataset.turn));
-  el.querySelectorAll('[data-out]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#host-phase [data-out]').forEach(b => b.onclick = () => {
     if(confirm(`${pname(b.dataset.out)} was voted out?`)) hostEliminate(b.dataset.out);
   });
   el.querySelectorAll('input.hint').forEach(inp => {
@@ -582,11 +695,16 @@ function renderRoundPanel(){
       el.querySelector(`input.hint[data-hint="${next}"]`)?.focus();
     };
   });
-  const tog = $('#hint-tog'); if(tog) tog.onchange = () => { H.state.hintsOn = tog.checked; commit(); };
-  const b = id => el.querySelector(id);
+  const b = id => document.querySelector('#v-host ' + id);
   if(b('#r-shuffle')) b('#r-shuffle').onclick = () => { if(confirm('Shuffle the turn order?')) hostShuffle(); };
   if(b('#r-next')) b('#r-next').onclick = hostNextTurn;
   if(b('#r-vote')) b('#r-vote').onclick = hostStartVoting;
+  if(b('#r-discuss')) b('#r-discuss').onclick = hostStartDiscussion;
+  if(b('#r-pause')) b('#r-pause').onclick = hostPause;
+  if(b('#r-add')) b('#r-add').onclick = () => hostAddTime(30);
+  if(b('#r-tminus')) b('#r-tminus').onclick = () => hostSetDiscussSecs(-15);
+  if(b('#r-tplus')) b('#r-tplus').onclick = () => hostSetDiscussSecs(15);
+  if(b('#r-revealvotes')) b('#r-revealvotes').onclick = hostRevealVotes;
   if(b('#r-clues')) b('#r-clues').onclick = hostBackToClues;
   if(b('#r-giveup')) b('#r-giveup').onclick = () => { if(confirm('Reveal who the Chameleon is without catching them?')) hostReveal(); };
 
@@ -633,7 +751,7 @@ $('#host-new').onclick = () => {
 };
 $('#host-newroom').onclick = () => {
   if(!confirm('Start a fresh room? Everyone will need to scan the new QR code.')) return;
-  H.state = { room: makeCode(), players: {}, round: null, used: [], order: [], hintsOn: H.state.hintsOn }; H.save();
+  H.state = { room: makeCode(), players: {}, round: null, used: [], order: [], discussSecs: H.state.discussSecs }; H.save();
   renderHostAll(); hostConnect();
 };
 $('#host-logout').onclick = () => {
@@ -734,7 +852,20 @@ function renderPlayer(){
 
   const newRound = d.n !== P.n;
   if(newRound){ P.n = d.n; P.flashSeen = d.flash?.seq || 0; hideSecret(); renderBoard($('#pl-board'), d); }
-  else if(d.flash && d.flash.seq > P.flashSeen){ P.flashSeen = d.flash.seq; showFlash(d.flash.name, d.flash.hit); }
+  else if(d.flash && d.flash.seq > P.flashSeen){ P.flashSeen = d.flash.seq; showFlash(d.flash.name, d.flash.kind); }
+
+  const tm = $('#pl-timer');
+  if(d.phase === 'discuss' && d.timer){
+    tm.hidden = false;
+    tm.innerHTML = `<div class="center muted">Discussion time</div>
+      <div class="timer" ${d.timer.running ? `data-end="${Date.now() + d.timer.left}"` : `data-left="${d.timer.left}"`}></div>
+      <div class="center muted">${d.timer.running ? 'Voting starts when the timer ends' : 'Paused'}</div>`;
+    tickTimers();
+  } else tm.hidden = true;
+
+  const res = resultsHtml(d.outList || [], d.lastTally);
+  $('#pl-results').hidden = !res;
+  $('#pl-results').innerHTML = res;
 
   const turnP = d.order.find(p => p.pid === d.turn);
   $('#pl-banner').innerHTML = bannerHtml({ phase: d.phase, turnName: turnP?.name || '', isYou: d.turn === d.you, result: d.result });
@@ -744,9 +875,8 @@ function renderPlayer(){
     const opts = d.order.filter(p => !d.out.includes(p.pid) && p.pid !== d.you);
     vote.hidden = false;
     vote.innerHTML = `<div class="panelhd"><h2>Vote</h2><span class="pill">${d.votedN}/${d.total} voted</span></div>
-      <p class="muted" style="margin-top:0">${d.myVote ? 'Tap another name to change your vote.' : 'Who do you think is the Chameleon?'}</p>
-      <div class="votebtns">` + opts.map(p => `<button data-v="${p.pid}" class="${d.myVote === p.pid ? 'sel' : ''}">${esc(p.name)}</button>`).join('') + `</div>` +
-      (d.out.length ? `<p class="muted" style="margin-bottom:0">Not the Chameleon: ${d.order.filter(p => d.out.includes(p.pid)).map(p => '✕ ' + esc(p.name)).join(', ')}</p>` : '');
+      <p class="muted" style="margin-top:0">${d.myVote ? 'Vote locked in — tap another name to change it. Votes are secret until the host reveals them.' : 'Who do you think is the Chameleon?'}</p>
+      <div class="votebtns">` + opts.map(p => `<button data-v="${p.pid}" class="${d.myVote === p.pid ? 'sel' : ''}">${esc(p.name)}</button>`).join('') + `</div>`;
     vote.querySelectorAll('[data-v]').forEach(b => b.onclick = () => sendVote(b.dataset.v));
   } else vote.hidden = true;
 

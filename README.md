@@ -10,11 +10,13 @@ A phone-based hidden-word party game. One device is the host (the main screen); 
    - regular players see the secret word,
    - one random player sees **"You are the Chameleon"**.
    The button looks the same for everyone until it's held.
-5. **Hints:** the host's *Turn order* panel sets the order (▲▼ or 🔀 Shuffle) and whose turn it is (tap a name, or **Next turn ▶**). Every phone shows whose turn it is. Turn on **Show hints on screens** to type each person's hint — it appears on everyone's phone (Enter jumps to the next player).
-6. **Voting:** the host taps **🗳️ Start voting**. Every phone shows buttons for the remaining players to vote; the host sees the live tally. The host taps **Voted out** on whoever the group picked:
-   - not the Chameleon → a big ✕ flashes on every screen, they're crossed off, and voting starts again,
+5. **Hints:** the host's *Turns & hints* panel sets the order (▲▼ or 🔀 Shuffle) and whose turn it is (tap a name, or **Next turn ▶**). The host types each person's hint; hints show on every phone (Enter jumps to the next player).
+6. **Discussion:** the host taps **💬 Start discussion**. A countdown shows on every screen (set the length with − / + in the hints panel; **Pause**, **+30s**, or **Skip to voting** while it runs). When it hits 0, voting starts automatically.
+7. **Voting:** everyone votes on their phone. Votes stay secret; the host sees only who has voted. The host taps **Reveal votes** and the player with the most votes is checked:
+   - not the Chameleon → a big ✕ flashes on every screen, they're listed under *Voted out*, and discussion starts again, then another vote,
+   - a tie → ⚖️ flashes and it goes back to discussion,
    - the Chameleon → 🦎 flashes on every screen with "Caught!" and the secret word.
-   **Reveal anyway** ends the round without a catch; **Back to hints** returns to giving hints.
+   You can also pick who was voted out by hand, or **Reveal anyway** to end the round.
 
 Players who refresh or rejoin with the same name keep their role for the current round. People who join mid-round get in on the next one.
 
