@@ -62,6 +62,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .x{background:none;color:var(--muted);padding:2px 8px;font-size:1.1rem}
 .reveal{background:#0b1711;border:2px dashed var(--accent);border-radius:var(--radius);padding:14px;text-align:center;font-size:1.2rem}
 .reveal b{color:var(--accent2);font-size:1.6rem}
+.reveal.found{border-style:solid;background:#14321f}
+.votelog{list-style:none;padding:0;margin:10px 0 0}
+.votelog li{padding:8px 12px;border-radius:10px;background:#3a1616;margin-top:6px;font-size:1.1rem}
+.votelog li.hit{background:#14532d}
 
 /* Player */
 .secret{margin:18px auto 8px;max-width:520px}
@@ -124,7 +128,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
       <div class="row">
         <select id="host-topic" class="grow"></select>
         <button id="host-new">New round</button>
-        <button id="host-reveal" class="secondary" disabled>Reveal the Chameleon</button>
+      </div>
+      <div class="card" id="host-vote" hidden>
+        <h2 style="margin:0 0 8px">Who got voted?</h2>
+        <div class="row">
+          <select id="host-votesel" class="grow"></select>
+          <button id="host-votebtn">Check</button>
+          <button id="host-giveup" class="secondary">Reveal anyway</button>
+        </div>
+        <ul class="votelog" id="host-votelog"></ul>
       </div>
       <div id="host-revealbox" class="reveal" style="margin-top:12px" hidden></div>
       <div class="err" id="host-err"></div>
@@ -343,7 +355,7 @@ function hostNewRound(){
   }
   H.state.used.push(card);
   const n = (H.state.round ? H.state.round.n : 0) + 1;
-  H.state.round = { n, card, word: rnd(16), members: online, cham: online[rnd(online.length)], revealed: false };
+  H.state.round = { n, card, word: rnd(16), members: online, cham: online[rnd(online.length)], revealed: false, voted: [] };
   H.save();
   online.forEach(sendRoundTo);
   renderHostAll();
@@ -354,16 +366,41 @@ function hostReveal(){
   r.revealed = true; H.save(); renderHostAll();
 }
 
+// Host checks the person the group voted for. Not the Chameleon -> keep voting.
+function hostVote(pid){
+  const r = H.state.round; if(!r || r.revealed || !pid) return;
+  if(!r.voted) r.voted = [];
+  if(!r.voted.includes(pid)) r.voted.push(pid);
+  if(pid === r.cham) r.revealed = true;
+  H.save(); renderHostAll();
+}
+
+const pname = pid => H.state.players[pid]?.name || 'Unknown';
+
 function renderHostAll(){
   const r = H.state.round;
   $('#host-idle').hidden = !!r;
   $('#host-board').hidden = !r;
   if(r) renderBoard($('#host-board'), CARDS[r.card]);
-  $('#host-reveal').disabled = !r || r.revealed;
+  if(r && !r.voted) r.voted = [];
+
+  // Vote panel
+  $('#host-vote').hidden = !r;
+  if(r){
+    const left = r.members.filter(pid => !r.voted.includes(pid));
+    $('#host-votesel').innerHTML = `<option value="">Select a player…</option>` +
+      left.map(pid => `<option value="${pid}">${esc(pname(pid))}</option>`).join('');
+    $('#host-votesel').disabled = $('#host-votebtn').disabled = $('#host-giveup').disabled = r.revealed;
+    $('#host-votelog').innerHTML = r.voted.map(pid => pid === r.cham
+      ? `<li class="hit">✅ <b>${esc(pname(pid))}</b> IS the Chameleon!</li>`
+      : `<li>❌ <b>${esc(pname(pid))}</b> is not the Chameleon — keep voting</li>`).join('');
+  }
+
   const box = $('#host-revealbox');
   if(r && r.revealed){
-    const name = H.state.players[r.cham]?.name || 'Unknown';
-    box.innerHTML = `The Chameleon was <b>${esc(name)}</b><br>The secret word was <b>${esc(CARDS[r.card].words[r.word])}</b>`;
+    const caught = r.voted.includes(r.cham);
+    box.className = 'reveal' + (caught ? ' found' : '');
+    box.innerHTML = `${caught ? '🦎 Caught! ' : ''}The Chameleon was <b>${esc(pname(r.cham))}</b><br>The secret word was <b>${esc(CARDS[r.card].words[r.word])}</b>`;
     box.hidden = false;
   } else box.hidden = true;
   renderPlayers();
@@ -391,7 +428,8 @@ function renderPlayers(){
 function setNet(sel, text, ok){ const e = $(sel); e.textContent = text; e.style.color = ok ? 'var(--accent)' : 'var(--muted)'; }
 
 $('#host-new').onclick = hostNewRound;
-$('#host-reveal').onclick = () => { if(confirm('Reveal who the Chameleon is?')) hostReveal(); };
+$('#host-votebtn').onclick = () => hostVote($('#host-votesel').value);
+$('#host-giveup').onclick = () => { if(confirm('Reveal who the Chameleon is without catching them?')) hostReveal(); };
 $('#host-newroom').onclick = () => {
   if(!confirm('Start a fresh room? Everyone will need to scan the new QR code.')) return;
   H.state = { room: makeCode(), players: {}, round: null, used: [] }; H.save();
