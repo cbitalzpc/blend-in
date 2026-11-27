@@ -303,7 +303,7 @@ function showFlash(name, kind){
   f.className = 'on ' + kind;
   f.querySelector('.sym').textContent = kind === 'hit' ? '🦎' : kind === 'tie' ? '⚖️' : '✕';
   f.querySelector('.msg').textContent = kind === 'hit' ? `${name} IS the Chameleon!`
-    : kind === 'tie' ? `Tie: ${name} — discuss & vote again` : `${name} is NOT the Chameleon`;
+    : kind === 'tie' ? `It's a tie (${name}) — nobody is out. Vote again!` : `${name} is NOT the Chameleon`;
   clearTimeout(flashTimer);
   flashTimer = setTimeout(() => { f.className = ''; }, 2800);
   if(navigator.vibrate) try{ navigator.vibrate(kind === 'hit' ? [80, 60, 80, 60, 200] : [200]); }catch{}
@@ -322,12 +322,14 @@ function tickTimers(){
 setInterval(tickTimers, 250);
 
 // "Voted out" list + last vote count, shown on host and phones.
-function resultsHtml(out, lastTally){
-  if(!out.length && !lastTally) return '';
-  return `<h2>Voted out</h2><ul class="results">` +
+function resultsHtml(out, lastTally, lastTie){
+  let h = '';
+  if(lastTie) h += `<div class="banner" style="margin-top:0;background:#78350f">⚖️ Last vote was a tie — nobody is out. Vote again!</div>`;
+  if(out.length) h += `<h2>Voted out</h2><ul class="results">` +
     out.map(o => o.hit ? `<li class="hit">🦎 <b>${esc(o.name)}</b> — the Chameleon!</li>`
-                       : `<li>✕ <b>${esc(o.name)}</b> — not the Chameleon</li>`).join('') + `</ul>` +
-    (lastTally ? `<p class="tally">Last vote: ${lastTally.map(t => `${esc(t.name)} ${t.n}`).join(' · ')}</p>` : '');
+                       : `<li>✕ <b>${esc(o.name)}</b> — not the Chameleon</li>`).join('') + `</ul>`;
+  if(lastTally) h += `<p class="tally">Last vote count: ${lastTally.map(t => `${esc(t.name)} ${t.n}`).join(' · ')}</p>`;
+  return h;
 }
 
 // Shared "what's happening" banner for host + phones.
@@ -476,7 +478,7 @@ function payloadFor(pid){
     phase: r.phase, out: r.out, myVote: r.votes[pid] || null,
     votedN: Object.keys(r.votes).length, total: r.members.length,
     flash: r.flash, timer: timerLeft(r),
-    outList: outList(r), lastTally: r.lastTally || null,
+    outList: outList(r), lastTally: r.lastTally || null, lastTie: !!r.lastTie,
     result: r.phase === 'done' ? { cham: pname(r.cham), word: card.words[r.word], caught: r.caught } : null,
   };
 }
@@ -575,6 +577,7 @@ function hostRevealVotes(){
   if(!ranked.length) return;
   r.lastTally = ranked.map(([p, n]) => ({ name: pname(p), n }));
   const tied = ranked.filter(e => e[1] === ranked[0][1]).map(e => e[0]);
+  r.lastTie = tied.length > 1;
   if(tied.length > 1){
     const names = tied.map(pname).join(' & ');
     r.flash = { seq: (r.flash?.seq || 0) + 1, name: names, kind: 'tie' };
@@ -589,6 +592,7 @@ function hostRevealVotes(){
 function hostEliminate(pid){
   const r = H.state.round; if(!r || r.phase === 'done' || r.out.includes(pid)) return;
   r.out.push(pid);
+  r.lastTie = false;
   const hit = pid === r.cham;
   r.flash = { seq: (r.flash?.seq || 0) + 1, name: pname(pid), kind: hit ? 'hit' : 'miss' };
   r.votes = {};
@@ -653,7 +657,7 @@ function renderRoundPanel(){
   }
 
   // Results so far
-  const res = resultsHtml(outList(r), r.lastTally);
+  const res = resultsHtml(outList(r), r.lastTally, r.lastTie && r.phase !== 'done');
   if(res) h += `<div class="card">${res}</div>`;
   const top = h; h = '';
 
@@ -863,7 +867,7 @@ function renderPlayer(){
     tickTimers();
   } else tm.hidden = true;
 
-  const res = resultsHtml(d.outList || [], d.lastTally);
+  const res = resultsHtml(d.outList || [], d.lastTally, d.lastTie && d.phase !== 'done');
   $('#pl-results').hidden = !res;
   $('#pl-results').innerHTML = res;
 
