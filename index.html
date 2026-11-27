@@ -42,10 +42,10 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .board .hd{display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--accent);font-size:1.1rem}
 .board .c{background:var(--cell);color:var(--cell-ink);border-radius:10px;display:flex;align-items:center;justify-content:center;
   text-align:center;padding:8px 3px;min-height:64px;font-weight:600;font-size:.95rem;overflow-wrap:break-word;hyphens:auto;min-width:0}
-@media (max-width:420px){.board{gap:4px}.board .c{font-size:.8rem;padding:6px 2px;min-height:58px}}
+@media (max-width:420px){.board{gap:4px}.board .c{font-size:min(.8rem,3.2vw);padding:6px 2px;min-height:58px}}
 .board .c.alt{background:var(--cell-alt)}
 .big .board{gap:10px}
-.big .board .c{min-height:min(16vh,130px);font-size:clamp(1rem,2.2vw,1.7rem);border-radius:14px}
+.big .board .c{min-height:min(14vh,120px);font-size:clamp(1rem,2.2vw,1.7rem);border-radius:14px}
 .big .board .hd{font-size:1.6rem}
 .big .topic{font-size:clamp(2rem,4vw,3.2rem)}
 
@@ -60,16 +60,54 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;background:var(--danger)}
 .dot.ok{background:var(--accent)}
 .x{background:none;color:var(--muted);padding:2px 8px;font-size:1.1rem}
-.reveal{background:#0b1711;border:2px dashed var(--accent);border-radius:var(--radius);padding:14px;text-align:center;font-size:1.2rem}
-.reveal b{color:var(--accent2);font-size:1.6rem}
-.reveal.found{border-style:solid;background:#14321f}
-.votelog{list-style:none;padding:0;margin:10px 0 0}
-.votelog li{padding:8px 12px;border-radius:10px;background:#3a1616;margin-top:6px;font-size:1.1rem}
-.votelog li.hit{background:#14532d}
+
+/* Round panels (host + phones) */
+.banner{border-radius:var(--radius);padding:14px 16px;text-align:center;font-size:1.3rem;font-weight:700;background:var(--panel2);margin:12px 0}
+.banner.you{background:var(--accent);color:#06210f}
+.banner.vote{background:#4c1d95;color:#f5f3ff}
+.banner.caught{background:#14532d;border:2px solid var(--accent)}
+.banner.escaped{background:#3a1616;border:2px solid var(--danger)}
+.banner b.big{display:block;font-size:1.8rem;color:var(--accent2)}
+.panelhd{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.panelhd h2{margin:0}
+.tog{display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted);font-weight:600}
+.tog input{width:20px;height:20px;accent-color:var(--accent)}
+.turns{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.turns li{display:flex;align-items:center;gap:8px;background:#0b1711;border:2px solid transparent;border-radius:12px;padding:6px 10px;min-height:48px}
+.turns li.cur{border-color:var(--accent);background:#173a26}
+.turns li.out .nm{text-decoration:line-through;color:var(--danger)}
+.turns .num{color:var(--muted);font-weight:700;width:1.6em;text-align:right;flex:0 0 auto}
+.turns .nm{font-weight:700;font-size:1.1rem;flex:0 0 auto;background:none;color:var(--ink);padding:4px 6px;text-align:left}
+.turns .hinttxt{flex:1 1 auto;color:var(--accent2);font-weight:700;font-size:1.1rem;text-align:right;overflow-wrap:anywhere}
+.turns input.hint{flex:1 1 120px;padding:8px 10px;width:auto}
+.turns .mv{display:flex;flex:0 0 auto}
+.turns .mv .x{padding:2px 6px}
+.votes{display:flex;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;gap:10px;background:#0b1711;border-radius:12px;padding:8px 10px}
+.vrow .vname{font-weight:700;font-size:1.15rem;flex:0 0 auto;min-width:5em}
+.vrow .bar{flex:1 1 auto;height:12px;background:var(--panel2);border-radius:6px;overflow:hidden}
+.vrow .bar i{display:block;height:100%;background:#a78bfa}
+.vrow .cnt{font-weight:800;width:1.6em;text-align:center}
+.vrow.gone{opacity:.55}
+.vrow.gone .vname{text-decoration:line-through;color:var(--danger)}
+.votebtns{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.votebtns button{background:var(--panel2);color:var(--ink);min-height:56px;font-size:1.1rem;border:3px solid transparent}
+.votebtns button.sel{border-color:#a78bfa;background:#4c1d95}
+
+/* Flash overlay */
+#flash{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;z-index:50;
+  text-align:center;padding:20px;pointer-events:none}
+#flash.on{display:flex;animation:flashbg 2.8s ease-out forwards}
+#flash.miss{background:rgba(127,29,29,.92)}
+#flash.hit{background:rgba(20,83,45,.94)}
+#flash .sym{font-size:min(55vw,320px);line-height:1;font-weight:900;color:#fff;animation:pulse .45s ease-in-out 4 alternate}
+#flash .msg{font-size:clamp(1.5rem,6vw,3rem);font-weight:800;color:#fff;margin-top:10px}
+@keyframes pulse{from{transform:scale(.8);opacity:.35}to{transform:scale(1.08);opacity:1}}
+@keyframes flashbg{0%,80%{opacity:1}100%{opacity:0}}
 
 /* Player */
-.secret{margin:18px auto 8px;max-width:520px}
-.holdbtn{width:100%;min-height:120px;font-size:1.25rem;border-radius:18px;background:var(--panel2);color:var(--ink);
+.secret{margin:12px auto 8px;max-width:520px}
+.holdbtn{width:100%;min-height:110px;font-size:1.25rem;border-radius:18px;background:var(--panel2);color:var(--ink);
   border:3px solid var(--panel2);user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .holdbtn .sub{font-size:.85rem;color:var(--muted);font-weight:500}
@@ -82,6 +120,8 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 </style>
 </head>
 <body>
+
+<div id="flash"><div class="sym"></div><div class="msg"></div></div>
 
 <!-- HOME -->
 <section id="v-home" class="view">
@@ -117,6 +157,7 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
 <section id="v-host" class="view">
   <div class="hostgrid">
     <div>
+      <div id="host-banner"></div>
       <div class="card big" id="host-boardwrap">
         <div class="waiting" id="host-idle">
           <div class="logo">🦎</div>
@@ -129,17 +170,8 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
         <select id="host-topic" class="grow"></select>
         <button id="host-new">New round</button>
       </div>
-      <div class="card" id="host-vote" hidden>
-        <h2 style="margin:0 0 8px">Who got voted?</h2>
-        <div class="row">
-          <select id="host-votesel" class="grow"></select>
-          <button id="host-votebtn">Check</button>
-          <button id="host-giveup" class="secondary">Reveal anyway</button>
-        </div>
-        <ul class="votelog" id="host-votelog"></ul>
-      </div>
-      <div id="host-revealbox" class="reveal" style="margin-top:12px" hidden></div>
       <div class="err" id="host-err"></div>
+      <div id="host-round"></div>
     </div>
     <div>
       <div class="card">
@@ -181,12 +213,15 @@ input:focus,select:focus{outline:none;border-color:var(--accent)}
     <p class="muted">Waiting for the host to start the next round…</p>
   </div>
   <div id="pl-round" hidden>
+    <div id="pl-banner"></div>
+    <div class="card" id="pl-vote" hidden></div>
     <div class="secret">
       <button class="holdbtn" id="pl-hold" type="button">
         <span class="val" id="pl-val">Hold to see your word</span>
         <span class="sub" id="pl-sub">Keep your screen hidden</span>
       </button>
     </div>
+    <div class="card" id="pl-turns"></div>
     <div class="card"><div id="pl-board"></div></div>
   </div>
 </section>
@@ -243,6 +278,48 @@ function makeCode(){
   let s = ''; for(let i = 0; i < 4; i++) s += L[rnd(L.length)]; return s;
 }
 
+// Big flashing ✕ (wrong person) or ✓ (caught) on every screen.
+let flashTimer = null;
+function showFlash(name, hit){
+  const f = $('#flash');
+  f.className = '';
+  void f.offsetWidth; // restart animation
+  f.className = 'on ' + (hit ? 'hit' : 'miss');
+  f.querySelector('.sym').textContent = hit ? '🦎' : '✕';
+  f.querySelector('.msg').textContent = hit ? `${name} IS the Chameleon!` : `${name} is NOT the Chameleon`;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { f.className = ''; }, 2800);
+  if(navigator.vibrate) try{ navigator.vibrate(hit ? [80, 60, 80, 60, 200] : [200]); }catch{}
+}
+
+// Shared "what's happening" banner for host + phones.
+// v = { phase, turnName, isYou, result:{cham, word, caught} }
+function bannerHtml(v){
+  if(v.phase === 'clues'){
+    if(!v.turnName) return `<div class="banner">Give your hints</div>`;
+    return v.isYou ? `<div class="banner you">🎤 Your turn — give a hint!</div>`
+                   : `<div class="banner">🎤 <b>${esc(v.turnName)}</b>'s turn</div>`;
+  }
+  if(v.phase === 'vote') return `<div class="banner vote">🗳️ Voting time — who is the Chameleon?</div>`;
+  if(v.phase === 'done'){
+    const r = v.result;
+    return r.caught
+      ? `<div class="banner caught">🦎 Caught! <b>${esc(r.cham)}</b> was the Chameleon<b class="big">Secret word: ${esc(r.word)}</b></div>`
+      : `<div class="banner escaped">The Chameleon was <b>${esc(r.cham)}</b><b class="big">Secret word: ${esc(r.word)}</b></div>`;
+  }
+  return '';
+}
+
+// Read-only turn list (phones). items: [{pid,name}]
+function turnsHtml(items, curPid, out, hintsOn, hints, youPid){
+  return `<div class="panelhd"><h2>${hintsOn ? 'Turns & hints' : 'Turn order'}</h2></div><ol class="turns">` +
+    items.map((p, i) => `<li class="${p.pid === curPid ? 'cur' : ''} ${out.includes(p.pid) ? 'out' : ''}">
+      <span class="num">${i+1}</span>
+      <span class="nm">${p.pid === curPid ? '▶ ' : ''}${esc(p.name)}${p.pid === youPid ? ' <span class="muted">(you)</span>' : ''}${out.includes(p.pid) ? ' ✕' : ''}</span>
+      ${hintsOn ? `<span class="hinttxt">${esc(hints[p.pid] || '')}</span>` : ''}
+    </li>`).join('') + '</ol>';
+}
+
 // ===================== HOST =====================
 const H = {
   peer: null,
@@ -251,15 +328,19 @@ const H = {
   save(){ store.set('bi-host', this.state); },
   load(){
     this.state = store.get('bi-host', null) || { room: makeCode(), players: {}, round: null, used: [] };
-    if(!this.state.used) this.state.used = [];
+    const s = this.state;
+    if(!s.used) s.used = [];
+    if(!s.order) s.order = [];
+    if(s.hintsOn == null) s.hintsOn = false;
+    if(s.round && !s.round.order) s.round = null; // round from an older version
   },
 };
+const pname = pid => H.state.players[pid]?.name || 'Unknown';
 
 async function hostStart(){
   if(sessionStorage.getItem('bi-auth') !== '1' && store.get('bi-auth', 0) !== 1){ show('login'); return; }
   show('host');
   H.load();
-  // Topic picker
   const sel = $('#host-topic');
   sel.innerHTML = `<option value="-1">🎲 Random topic</option>` +
     CARDS.map((c, i) => `<option value="${i}">${esc(c.topic)}</option>`).join('');
@@ -289,7 +370,6 @@ function hostConnect(){
   peer.on('disconnected', () => { setNet('#host-net', 'Reconnecting…', false); try{ peer.reconnect(); }catch{} });
   peer.on('error', err => {
     if(err.type === 'unavailable-id'){
-      // Usually our own previous tab/session still holds the id for a few seconds.
       setNet('#host-net', 'Room busy (is it open in another tab?) — retrying…', false);
       setTimeout(() => { if(H.peer === peer) hostConnect(); }, 4000);
     } else if(['network','server-error','socket-error','socket-closed'].includes(err.type)){
@@ -297,6 +377,18 @@ function hostConnect(){
       setTimeout(() => { if(H.peer === peer) hostConnect(); }, 3000);
     }
   });
+}
+
+// Move everything a player had in the round over to a new player id.
+function remapPid(oldPid, newPid){
+  const r = H.state.round;
+  H.state.order = H.state.order.map(p => p === oldPid ? newPid : p);
+  if(!r) return;
+  const m = p => p === oldPid ? newPid : p;
+  r.members = r.members.map(m); r.order = r.order.map(m); r.out = r.out.map(m);
+  if(r.cham === oldPid) r.cham = newPid;
+  if(oldPid in r.hints){ r.hints[newPid] = r.hints[oldPid]; delete r.hints[oldPid]; }
+  const v = {}; for(const [a, b] of Object.entries(r.votes)) v[m(a)] = m(b); r.votes = v;
 }
 
 function hostOnData(conn, msg){
@@ -309,38 +401,53 @@ function hostOnData(conn, msg){
     if(old && old !== conn){ try{ old.close(); }catch{} }
     conn.pid = pid;
     H.conns.set(pid, conn);
-    // Same name rejoining from a fresh tab: take over the old (offline) seat, including their role.
+    // Same name rejoining from a fresh tab/phone: take over the old (offline) seat, including their role.
     for(const [opid, op] of Object.entries(H.state.players)){
       if(opid !== pid && op.name.toLowerCase() === name.toLowerCase() && !H.conns.get(opid)?.open){
         delete H.state.players[opid];
-        const r = H.state.round;
-        if(r){
-          r.members = r.members.map(m => m === opid ? pid : m);
-          if(r.cham === opid) r.cham = pid;
-        }
+        remapPid(opid, pid);
       }
     }
     const p = H.state.players[pid];
     if(p) p.name = name; else H.state.players[pid] = { name, joined: Date.now() };
     H.save();
-    sendRoundTo(pid);
-    renderPlayers();
+    broadcast(); // names may have changed
+    renderHostAll();
+  } else if(msg.t === 'vote'){
+    const r = H.state.round, voter = conn.pid, target = String(msg.target || '');
+    if(!r || r.phase !== 'vote' || !voter || !r.members.includes(voter)) return;
+    if(!r.members.includes(target) || r.out.includes(target) || target === voter) return;
+    r.votes[voter] = target;
+    H.save(); broadcast(); renderRoundPanel();
   }
 }
 
-// What each player is allowed to know. The chameleon's device never receives the word.
+// What each player is allowed to know. The chameleon's device never receives the word (until the round ends).
 function payloadFor(pid){
   const r = H.state.round;
   if(!r) return { t: 'idle' };
   if(!r.members.includes(pid)) return { t: 'idle', late: true };
   const card = CARDS[r.card];
-  return { t: 'round', n: r.n, topic: card.topic, words: card.words,
-           secret: pid === r.cham ? null : card.words[r.word] };
+  return {
+    t: 'round', n: r.n, topic: card.topic, words: card.words, you: pid,
+    secret: pid === r.cham ? null : card.words[r.word],
+    order: r.order.map(p => ({ pid: p, name: pname(p) })),
+    turn: r.phase === 'clues' ? (r.order[r.turn] || null) : null,
+    hintsOn: H.state.hintsOn, hints: H.state.hintsOn ? r.hints : {},
+    phase: r.phase, out: r.out, myVote: r.votes[pid] || null,
+    votedN: Object.keys(r.votes).length, total: r.members.length,
+    flash: r.flash,
+    result: r.phase === 'done' ? { cham: pname(r.cham), word: card.words[r.word], caught: r.caught } : null,
+  };
 }
 function sendRoundTo(pid){
   const c = H.conns.get(pid);
   if(c && c.open){ try{ c.send(payloadFor(pid)); }catch{} }
 }
+function broadcast(){ for(const pid of H.conns.keys()) sendRoundTo(pid); }
+let bcastTimer = null;
+function broadcastSoon(){ clearTimeout(bcastTimer); bcastTimer = setTimeout(broadcast, 350); }
+function commit(){ H.save(); broadcast(); renderHostAll(); }
 
 function hostNewRound(){
   const err = $('#host-err');
@@ -354,56 +461,139 @@ function hostNewRound(){
     card = pool[rnd(pool.length)];
   }
   H.state.used.push(card);
+  // Keep the order the host set last time; newcomers go on the end.
+  const order = H.state.order.filter(p => online.includes(p)).concat(online.filter(p => !H.state.order.includes(p)));
+  H.state.order = order.concat(H.state.order.filter(p => !order.includes(p)));
   const n = (H.state.round ? H.state.round.n : 0) + 1;
-  H.state.round = { n, card, word: rnd(16), members: online, cham: online[rnd(online.length)], revealed: false, voted: [] };
-  H.save();
-  online.forEach(sendRoundTo);
-  renderHostAll();
+  H.state.round = {
+    n, card, word: rnd(16), members: online, cham: online[rnd(online.length)],
+    order, turn: 0, phase: 'clues', hints: {}, votes: {}, out: [], caught: false, flash: null,
+  };
+  commit();
 }
 
+function syncOrder(){ // remember the round's order for next round
+  const r = H.state.round;
+  H.state.order = r.order.concat(H.state.order.filter(p => !r.order.includes(p)));
+}
+function hostMove(i, d){
+  const r = H.state.round, j = i + d;
+  if(!r || j < 0 || j >= r.order.length) return;
+  const cur = r.order[r.turn];
+  [r.order[i], r.order[j]] = [r.order[j], r.order[i]];
+  r.turn = r.order.indexOf(cur);
+  syncOrder(); commit();
+}
+function hostShuffle(){
+  const r = H.state.round; if(!r) return;
+  for(let i = r.order.length - 1; i > 0; i--){ const j = rnd(i + 1); [r.order[i], r.order[j]] = [r.order[j], r.order[i]]; }
+  r.turn = 0; syncOrder(); commit();
+}
+function hostSetTurn(i){ const r = H.state.round; if(!r) return; r.phase = r.phase === 'done' ? 'done' : 'clues'; r.turn = i; commit(); }
+function hostNextTurn(){ const r = H.state.round; if(!r) return; r.turn = (r.turn + 1) % r.order.length; commit(); }
+function hostStartVoting(){ const r = H.state.round; if(!r) return; r.phase = 'vote'; r.votes = {}; commit(); }
+function hostBackToClues(){ const r = H.state.round; if(!r) return; r.phase = 'clues'; r.votes = {}; commit(); }
+
+// Host marks who the group voted out. Wrong -> flash ✕ everywhere and vote again.
+function hostEliminate(pid){
+  const r = H.state.round; if(!r || r.phase !== 'vote' || r.out.includes(pid)) return;
+  r.out.push(pid);
+  const hit = pid === r.cham;
+  r.flash = { seq: (r.flash?.seq || 0) + 1, name: pname(pid), hit };
+  r.votes = {};
+  if(hit){ r.phase = 'done'; r.caught = true; }
+  commit();
+  showFlash(pname(pid), hit);
+}
 function hostReveal(){
   const r = H.state.round; if(!r) return;
-  r.revealed = true; H.save(); renderHostAll();
+  r.phase = 'done'; r.caught = false; commit();
 }
-
-// Host checks the person the group voted for. Not the Chameleon -> keep voting.
-function hostVote(pid){
-  const r = H.state.round; if(!r || r.revealed || !pid) return;
-  if(!r.voted) r.voted = [];
-  if(!r.voted.includes(pid)) r.voted.push(pid);
-  if(pid === r.cham) r.revealed = true;
-  H.save(); renderHostAll();
-}
-
-const pname = pid => H.state.players[pid]?.name || 'Unknown';
 
 function renderHostAll(){
   const r = H.state.round;
   $('#host-idle').hidden = !!r;
   $('#host-board').hidden = !r;
   if(r) renderBoard($('#host-board'), CARDS[r.card]);
-  if(r && !r.voted) r.voted = [];
-
-  // Vote panel
-  $('#host-vote').hidden = !r;
-  if(r){
-    const left = r.members.filter(pid => !r.voted.includes(pid));
-    $('#host-votesel').innerHTML = `<option value="">Select a player…</option>` +
-      left.map(pid => `<option value="${pid}">${esc(pname(pid))}</option>`).join('');
-    $('#host-votesel').disabled = $('#host-votebtn').disabled = $('#host-giveup').disabled = r.revealed;
-    $('#host-votelog').innerHTML = r.voted.map(pid => pid === r.cham
-      ? `<li class="hit">✅ <b>${esc(pname(pid))}</b> IS the Chameleon!</li>`
-      : `<li>❌ <b>${esc(pname(pid))}</b> is not the Chameleon — keep voting</li>`).join('');
-  }
-
-  const box = $('#host-revealbox');
-  if(r && r.revealed){
-    const caught = r.voted.includes(r.cham);
-    box.className = 'reveal' + (caught ? ' found' : '');
-    box.innerHTML = `${caught ? '🦎 Caught! ' : ''}The Chameleon was <b>${esc(pname(r.cham))}</b><br>The secret word was <b>${esc(CARDS[r.card].words[r.word])}</b>`;
-    box.hidden = false;
-  } else box.hidden = true;
+  $('#host-banner').innerHTML = r ? bannerHtml({
+    phase: r.phase, turnName: r.order[r.turn] ? pname(r.order[r.turn]) : '',
+    result: r.phase === 'done' ? { cham: pname(r.cham), word: CARDS[r.card].words[r.word], caught: r.caught } : null,
+  }) : '';
+  renderRoundPanel();
   renderPlayers();
+}
+
+function renderRoundPanel(){
+  const r = H.state.round, el = $('#host-round');
+  if(!r){ el.innerHTML = ''; return; }
+  // Keep focus in a hint box while the panel re-renders.
+  const ae = document.activeElement;
+  const keep = ae && ae.dataset && ae.dataset.hint ? { pid: ae.dataset.hint, s: ae.selectionStart } : null;
+
+  const on = H.state.hintsOn, clues = r.phase === 'clues';
+  let h = `<div class="card"><div class="panelhd"><h2>Turn order</h2>
+    <label class="tog"><input type="checkbox" id="hint-tog" ${on ? 'checked' : ''}> Show hints on screens</label></div>
+    <ol class="turns">` + r.order.map((pid, i) => `
+      <li class="${clues && i === r.turn ? 'cur' : ''} ${r.out.includes(pid) ? 'out' : ''}">
+        <span class="mv"><button class="x" data-up="${i}" title="Move up">▲</button><button class="x" data-down="${i}" title="Move down">▼</button></span>
+        <button class="nm" data-turn="${i}" title="Make it their turn">${clues && i === r.turn ? '▶ ' : ''}${esc(pname(pid))}${r.out.includes(pid) ? ' ✕' : ''}</button>
+        ${on ? `<input class="hint" data-hint="${pid}" value="${esc(r.hints[pid] || '')}" placeholder="their hint…" maxlength="40" autocomplete="off">` : ''}
+      </li>`).join('') + `</ol>
+    <div class="row" style="margin-top:12px">
+      <button class="secondary" id="r-shuffle">🔀 Shuffle order</button>
+      ${clues ? `<button class="secondary" id="r-next">Next turn ▶</button><button id="r-vote">🗳️ Start voting</button>` : ''}
+    </div></div>`;
+
+  if(r.phase === 'vote'){
+    const left = r.order.filter(p => !r.out.includes(p));
+    const tally = {}; Object.values(r.votes).forEach(t => tally[t] = (tally[t] || 0) + 1);
+    const max = Math.max(1, ...Object.values(tally));
+    const notVoted = r.members.filter(p => !(p in r.votes)).map(pname);
+    h += `<div class="card"><div class="panelhd"><h2>Voting</h2><span class="pill">${Object.keys(r.votes).length}/${r.members.length} voted</span></div>
+      <p class="muted" style="margin-top:0">Players vote on their phones. Tap <b>Voted out</b> on whoever the group picked.</p>
+      <div class="votes">` +
+      left.map(p => `<div class="vrow"><span class="vname">${esc(pname(p))}</span>
+          <span class="bar"><i style="width:${(tally[p] || 0) / max * 100}%"></i></span><span class="cnt">${tally[p] || 0}</span>
+          <button class="danger" data-out="${p}">Voted out</button></div>`).join('') +
+      r.out.map(p => `<div class="vrow gone"><span class="vname">${esc(pname(p))}</span><span class="muted">not the Chameleon</span></div>`).join('') +
+      `</div>${notVoted.length ? `<p class="muted">Still voting: ${notVoted.map(esc).join(', ')}</p>` : ''}
+      <div class="row" style="margin-top:12px">
+        <button class="secondary" id="r-clues">◀ Back to hints</button>
+        <button class="secondary" id="r-giveup">Reveal anyway</button>
+      </div></div>`;
+  }
+  el.innerHTML = h;
+
+  el.querySelectorAll('[data-up]').forEach(b => b.onclick = () => hostMove(+b.dataset.up, -1));
+  el.querySelectorAll('[data-down]').forEach(b => b.onclick = () => hostMove(+b.dataset.down, 1));
+  el.querySelectorAll('[data-turn]').forEach(b => b.onclick = () => hostSetTurn(+b.dataset.turn));
+  el.querySelectorAll('[data-out]').forEach(b => b.onclick = () => {
+    if(confirm(`${pname(b.dataset.out)} was voted out?`)) hostEliminate(b.dataset.out);
+  });
+  el.querySelectorAll('input.hint').forEach(inp => {
+    inp.oninput = () => { r.hints[inp.dataset.hint] = inp.value; H.save(); broadcastSoon(); };
+    inp.onkeydown = e => {
+      if(e.key !== 'Enter') return;
+      e.preventDefault();
+      const i = r.order.indexOf(inp.dataset.hint);
+      const next = r.order[(i + 1) % r.order.length];
+      if(r.phase === 'clues') r.turn = (i + 1) % r.order.length;
+      commit();
+      el.querySelector(`input.hint[data-hint="${next}"]`)?.focus();
+    };
+  });
+  const tog = $('#hint-tog'); if(tog) tog.onchange = () => { H.state.hintsOn = tog.checked; commit(); };
+  const b = id => el.querySelector(id);
+  if(b('#r-shuffle')) b('#r-shuffle').onclick = () => { if(confirm('Shuffle the turn order?')) hostShuffle(); };
+  if(b('#r-next')) b('#r-next').onclick = hostNextTurn;
+  if(b('#r-vote')) b('#r-vote').onclick = hostStartVoting;
+  if(b('#r-clues')) b('#r-clues').onclick = hostBackToClues;
+  if(b('#r-giveup')) b('#r-giveup').onclick = () => { if(confirm('Reveal who the Chameleon is without catching them?')) hostReveal(); };
+
+  if(keep){
+    const inp = el.querySelector(`input.hint[data-hint="${keep.pid}"]`);
+    if(inp){ inp.focus(); try{ inp.setSelectionRange(keep.s, keep.s); }catch{} }
+  }
 }
 
 function renderPlayers(){
@@ -419,20 +609,31 @@ function renderPlayers(){
   $('#host-count').textContent = online + ' online';
   ul.querySelectorAll('[data-kick]').forEach(b => b.onclick = () => {
     const pid = b.dataset.kick;
+    if(!confirm(`Remove ${pname(pid)}?`)) return;
     const c = H.conns.get(pid);
     if(c){ try{ c.send({ t: 'kicked' }); }catch{} setTimeout(() => { try{ c.close(); }catch{} }, 300); H.conns.delete(pid); }
-    delete H.state.players[pid]; H.save(); renderPlayers();
+    delete H.state.players[pid];
+    H.state.order = H.state.order.filter(p => p !== pid);
+    const r = H.state.round;
+    if(r && r.members.includes(pid) && pid !== r.cham){
+      r.members = r.members.filter(p => p !== pid); r.order = r.order.filter(p => p !== pid);
+      delete r.votes[pid]; for(const k in r.votes) if(r.votes[k] === pid) delete r.votes[k];
+      r.turn = Math.min(r.turn, Math.max(0, r.order.length - 1));
+    }
+    commit();
   });
 }
 
 function setNet(sel, text, ok){ const e = $(sel); e.textContent = text; e.style.color = ok ? 'var(--accent)' : 'var(--muted)'; }
 
-$('#host-new').onclick = hostNewRound;
-$('#host-votebtn').onclick = () => hostVote($('#host-votesel').value);
-$('#host-giveup').onclick = () => { if(confirm('Reveal who the Chameleon is without catching them?')) hostReveal(); };
+$('#host-new').onclick = () => {
+  const r = H.state.round;
+  if(r && r.phase !== 'done' && !confirm('Start a new round? The current one hasn\'t finished.')) return;
+  hostNewRound();
+};
 $('#host-newroom').onclick = () => {
   if(!confirm('Start a fresh room? Everyone will need to scan the new QR code.')) return;
-  H.state = { room: makeCode(), players: {}, round: null, used: [] }; H.save();
+  H.state = { room: makeCode(), players: {}, round: null, used: [], order: [], hintsOn: H.state.hintsOn }; H.save();
   renderHostAll(); hostConnect();
 };
 $('#host-logout').onclick = () => {
@@ -454,7 +655,7 @@ $('#login-form').onsubmit = async e => {
 };
 
 // ===================== PLAYER =====================
-const P = { peer: null, conn: null, room: null, pid: null, name: null, data: null, retry: null, kicked: false };
+const P = { peer: null, conn: null, room: null, pid: null, name: null, data: null, retry: null, kicked: false, n: null, flashSeen: 0 };
 
 function joinStart(room){
   P.room = room.toUpperCase();
@@ -463,7 +664,6 @@ function joinStart(room){
   const name = store.get('bi-name', '');
   $('#join-code').textContent = P.room;
   $('#join-name').value = name;
-  // Returning to the same room with a saved name: go straight in.
   if(name && store.get('bi-room', '') === P.room){ P.name = name; playerStart(); }
   else { show('join'); setTimeout(() => $('#join-name').focus(), 50); }
 }
@@ -518,6 +718,11 @@ function openConn(){
 }
 function scheduleRetry(){ clearTimeout(P.retry); P.retry = setTimeout(() => { P.conn = null; playerConnect(); }, 2500); }
 
+function sendVote(target){
+  if(P.conn && P.conn.open){ try{ P.conn.send({ t: 'vote', target }); }catch{} }
+  if(P.data) { P.data.myVote = target; renderPlayer(); }
+}
+
 function renderPlayer(){
   const d = P.data;
   const inRound = d && d.t === 'round';
@@ -525,7 +730,27 @@ function renderPlayer(){
   $('#pl-round').hidden = !inRound;
   if(P.kicked){ $('#pl-wait').querySelector('h2').textContent = 'You were removed'; $('#pl-wait').querySelector('p').textContent = 'Ask the host to let you back in, then reload.'; return; }
   $('#pl-wait').querySelector('p').textContent = d && d.late ? 'Round in progress — you\'ll be in the next one.' : 'Waiting for the host to start the next round…';
-  if(inRound){ renderBoard($('#pl-board'), d); hideSecret(); }
+  if(!inRound) return;
+
+  const newRound = d.n !== P.n;
+  if(newRound){ P.n = d.n; P.flashSeen = d.flash?.seq || 0; hideSecret(); renderBoard($('#pl-board'), d); }
+  else if(d.flash && d.flash.seq > P.flashSeen){ P.flashSeen = d.flash.seq; showFlash(d.flash.name, d.flash.hit); }
+
+  const turnP = d.order.find(p => p.pid === d.turn);
+  $('#pl-banner').innerHTML = bannerHtml({ phase: d.phase, turnName: turnP?.name || '', isYou: d.turn === d.you, result: d.result });
+
+  const vote = $('#pl-vote');
+  if(d.phase === 'vote'){
+    const opts = d.order.filter(p => !d.out.includes(p.pid) && p.pid !== d.you);
+    vote.hidden = false;
+    vote.innerHTML = `<div class="panelhd"><h2>Vote</h2><span class="pill">${d.votedN}/${d.total} voted</span></div>
+      <p class="muted" style="margin-top:0">${d.myVote ? 'Tap another name to change your vote.' : 'Who do you think is the Chameleon?'}</p>
+      <div class="votebtns">` + opts.map(p => `<button data-v="${p.pid}" class="${d.myVote === p.pid ? 'sel' : ''}">${esc(p.name)}</button>`).join('') + `</div>` +
+      (d.out.length ? `<p class="muted" style="margin-bottom:0">Not the Chameleon: ${d.order.filter(p => d.out.includes(p.pid)).map(p => '✕ ' + esc(p.name)).join(', ')}</p>` : '');
+    vote.querySelectorAll('[data-v]').forEach(b => b.onclick = () => sendVote(b.dataset.v));
+  } else vote.hidden = true;
+
+  $('#pl-turns').innerHTML = turnsHtml(d.order, d.turn, d.out, d.hintsOn, d.hints, d.you);
 }
 
 // Hold-to-reveal. Chameleon and non-chameleon buttons look identical until pressed.

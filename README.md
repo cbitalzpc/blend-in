@@ -10,10 +10,11 @@ A phone-based hidden-word party game. One device is the host (the main screen); 
    - regular players see the secret word,
    - one random player sees **"You are the Chameleon"**.
    The button looks the same for everyone until it's held.
-5. Take turns giving a one-word clue, then vote. Under **Who got voted?** the host picks that person and taps **Check**:
-   - not the Chameleon → it says so, and you vote again (people already checked drop off the list),
-   - the Chameleon → "Caught!" plus the secret word.
-   **Reveal anyway** ends the round without a catch.
+5. **Hints:** the host's *Turn order* panel sets the order (▲▼ or 🔀 Shuffle) and whose turn it is (tap a name, or **Next turn ▶**). Every phone shows whose turn it is. Turn on **Show hints on screens** to type each person's hint — it appears on everyone's phone (Enter jumps to the next player).
+6. **Voting:** the host taps **🗳️ Start voting**. Every phone shows buttons for the remaining players to vote; the host sees the live tally. The host taps **Voted out** on whoever the group picked:
+   - not the Chameleon → a big ✕ flashes on every screen, they're crossed off, and voting starts again,
+   - the Chameleon → 🦎 flashes on every screen with "Caught!" and the secret word.
+   **Reveal anyway** ends the round without a catch; **Back to hints** returns to giving hints.
 
 Players who refresh or rejoin with the same name keep their role for the current round. People who join mid-round get in on the next one.
 
